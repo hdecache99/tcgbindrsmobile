@@ -3,6 +3,7 @@
     "name": "tcgbindrsmobile",
     "slug": "tcgbindrsmobile",
     "version": "1.0.0",
+    "scheme": "tcgbindrsmobile",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,17 +14,47 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tcgbindrs.app",
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "Usamos este identificador para mostrarte anuncios más relevantes y medir su rendimiento."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.tcgbindrs.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Permite el acceso a la cámara para escanear tus cartas.",
+          "photosPermission": "Permite el acceso a tus fotos para escanear cartas desde la galería."
+        }
+      ],
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3873970457022925~1536127260",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      "expo-tracking-transparency",
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Permite el acceso a NFC para compartir tus binders con una etiqueta física."
+        }
+      ]
+    ]
   }
 }
