@@ -3,6 +3,7 @@ import { Animated, Image, Linking, Modal, ScrollView, StyleSheet, Text, Touchabl
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import { getAllPendingOrderCount } from '../lib/orders';
 import { useTheme } from '../lib/ThemeContext';
 import { useLanguage } from '../lib/LanguageContext';
 import { fonts, radius, spacing } from '../theme';
@@ -30,6 +31,16 @@ export default function HamburgerMenu({ visible, onClose, navigation }) {
   // el mismo frame en que empieza a cerrar, cortando la animación a la mitad
   // y dando esa sensación de lag/tirón.
   const [mounted, setMounted] = useState(visible);
+  const [pendingOrderCount, setPendingOrderCount] = useState(0);
+
+  // Se recalcula cada vez que se abre el menú, en vez de mantenerlo vivo todo
+  // el tiempo que la app está abierta — nadie necesita el conteo al segundo,
+  // y así no hay que enganchar esto a ningún evento de foco/refresh global.
+  useEffect(() => {
+    if (visible) {
+      getAllPendingOrderCount().then(setPendingOrderCount).catch(() => {});
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {
@@ -55,11 +66,12 @@ export default function HamburgerMenu({ visible, onClose, navigation }) {
   }
 
   const items = [
-    { icon: 'albums-outline', label: t('menu_my_binders'), onPress: () => go('Binders') },
-    { icon: 'compass-outline', label: t('tab_feed'), onPress: () => go('Feed') },
-    { icon: 'newspaper-outline', label: t('feed_news'), onPress: () => go('Noticias') },
-    { icon: 'cash-outline', label: t('tab_sales'), onPress: () => go('Ventas') },
-    { icon: 'person-circle-outline', label: t('menu_profile'), onPress: () => go('Perfil') },
+    { icon: 'albums-outline', label: t('menu_my_binders'), onPress: () => go('BindersList') },
+    { icon: 'compass-outline', label: t('tab_feed'), onPress: () => go('DiscoverList') },
+    { icon: 'newspaper-outline', label: t('feed_news'), onPress: () => go('NewsList') },
+    { icon: 'cash-outline', label: t('tab_sales'), onPress: () => go('SalesMain') },
+    { icon: 'receipt-outline', label: t('menu_orders'), onPress: () => go('OrdersMain'), badge: pendingOrderCount },
+    { icon: 'person-circle-outline', label: t('menu_profile'), onPress: () => go('ProfileMain') },
     { icon: 'settings-outline', label: t('menu_settings'), onPress: () => go('Settings') },
   ];
 
@@ -80,10 +92,15 @@ export default function HamburgerMenu({ visible, onClose, navigation }) {
               <TouchableOpacity key={item.label} style={styles.item} onPress={item.onPress}>
                 <Ionicons name={item.icon} size={20} color={colors.foreground} style={styles.itemIcon} />
                 <Text style={styles.itemLabel}>{item.label}</Text>
+                {item.badge > 0 ? (
+                  <View style={styles.itemBadge}>
+                    <Text style={styles.itemBadgeText}>{item.badge}</Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             ))}
 
-            <TouchableOpacity style={styles.scanButton} onPress={() => go('Escanear')}>
+            <TouchableOpacity style={styles.scanButton} onPress={() => go('QuickScanMain')}>
               <Ionicons name="scan-outline" size={28} color="#fff" />
               <Text style={styles.scanButtonText}>{t('menu_scan')}</Text>
             </TouchableOpacity>
@@ -179,6 +196,21 @@ function getStyles(colors, insets) {
       fontFamily: fonts.semibold,
       fontSize: 15,
       color: colors.foreground,
+      flex: 1,
+    },
+    itemBadge: {
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 5,
+    },
+    itemBadgeText: {
+      fontFamily: fonts.bold,
+      fontSize: 11,
+      color: '#fff',
     },
     scanButton: {
       alignItems: 'center',

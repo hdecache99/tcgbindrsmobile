@@ -4,7 +4,6 @@ export const VISIBILITY_LABEL = {
   private: 'Privado',
 };
 
-// Mismos tonos semánticos que la web: público=verde, no listado=ámbar, privado=gris.
 export const VISIBILITY_COLOR = {
   public: { color: '#059669', backgroundColor: 'rgba(16, 185, 129, 0.12)' },
   unlisted: { color: '#d97706', backgroundColor: 'rgba(245, 158, 11, 0.15)' },

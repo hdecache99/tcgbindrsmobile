@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/ThemeContext';
 import AuthStack from './AuthStack';
-import AppTabs from './AppTabs';
+import AppStack from './AppStack';
 import SetUsernameScreen from '../screens/SetUsernameScreen';
 
 export default function RootNavigator() {
@@ -57,7 +57,7 @@ export default function RootNavigator() {
     return <SetUsernameScreen onDone={() => setNeedsUsername(false)} />;
   }
 
-  return session ? <AppTabs /> : <AuthStack />;
+  return session ? <AppStack /> : <AuthStack />;
 }
 
 function getStyles(colors) {

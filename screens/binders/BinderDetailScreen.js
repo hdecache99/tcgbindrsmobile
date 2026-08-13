@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, FlatList, Share, StyleSheet, Text, TouchableO
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getBinder, getBinderCards } from '../../lib/binders';
 import { markCardAsSold, removeCardFromBinder, reorderBinderCards } from '../../lib/binderCards';
+import { getPendingOrderCount } from '../../lib/orders';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { formatPrice } from '../../lib/currency';
 import { getTagColor } from '../../lib/tagColor';
@@ -22,6 +23,8 @@ import BinderIntro from '../../components/binders/BinderIntro';
 import ColorAura from '../../components/binders/ColorAura';
 import SellQuantityModal from '../../components/binders/SellQuantityModal';
 import BulkSellModal from '../../components/binders/BulkSellModal';
+import CreateOrderModal from '../../components/binders/CreateOrderModal';
+import PendingOrdersModal from '../../components/binders/PendingOrdersModal';
 import { fonts, spacing } from '../../theme';
 import { useTheme } from '../../lib/ThemeContext';
 
@@ -62,7 +65,7 @@ export default function BinderDetailScreen({ route, navigation }) {
   // `filteredCards` — reordenar con un filtro/búsqueda activos daría posiciones sin
   // sentido para las cartas que quedaron fuera de la vista.
   // Interacción: tocar una carta la "levanta" (moveFromId); tocar una segunda carta
-  // la suelta en esa posición. No es un drag físico: en un grid de 4 columnas,
+  // la suelta en esa posición. No es un drag físico: en un grid multi-columna,
   // arrastrar con el dedo es impreciso y react-native-draggable-flatlist no soporta
   // grids multi-columna de todos modos.
   const [reorderMode, setReorderMode] = useState(false);
@@ -72,6 +75,12 @@ export default function BinderDetailScreen({ route, navigation }) {
   // usa cuando hay más de 1 copia — con 1 sola no hace falta preguntar).
   const [sellingCard, setSellingCard] = useState(null);
   const [bulkSellModalOpen, setBulkSellModalOpen] = useState(false);
+
+  // Pedidos: un visitante arma un pedido con cartas seleccionadas; el dueño
+  // los ve y acepta/rechaza acá mismo, en el binder donde ocurren.
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [pendingOrdersModalOpen, setPendingOrdersModalOpen] = useState(false);
+  const [pendingOrderCount, setPendingOrderCount] = useState(0);
 
   // El color de tema del binder tiñe también la barra de navegación (título +
   // flecha de volver), no solo los botones de dentro de la pantalla — así se
@@ -130,11 +139,19 @@ export default function BinderDetailScreen({ route, navigation }) {
   }, [navigation, selectionMode, reorderMode]);
 
   const isOwner = binder && currentUserId === binder.owner_id;
-  // Fijo en 4: `cards_per_page` tiene un CHECK (IN 4,6,9,12,16) en Supabase
-  // pensado para las 4 densidades de página del visor de escritorio de la
+  // Fijo en 5: `cards_per_page` tiene un CHECK (IN 4,6,9,12,16) en Supabase
+  // pensado para las densidades de página del visor de escritorio de la
   // web — no para elegir libremente el ancho del grid en el teléfono.
-  const numColumns = 4;
+  const numColumns = 5;
   const accentColor = binder?.theme_color || colors.primary;
+
+  // Conteo inicial para la burbuja del botón "Pedidos" — después de esto, el
+  // propio modal mantiene el número al día vía onCountChange (ver abajo), sin
+  // repetir esta consulta en cada load().
+  useEffect(() => {
+    if (!isOwner) return;
+    getPendingOrderCount(binderId).then(setPendingOrderCount);
+  }, [isOwner, binderId]);
 
   const tagOptions = useMemo(() => {
     const tags = new Set();
@@ -373,12 +390,43 @@ export default function BinderDetailScreen({ route, navigation }) {
                     style={styles.actionButton}
                   />
                 ) : null}
+
+                <View style={styles.pedidosWrap}>
+                  <Button
+                    title="Pedidos"
+                    icon="receipt-outline"
+                    variant="secondary"
+                    compact
+                    onPress={() => setPendingOrdersModalOpen(true)}
+                  />
+                  {pendingOrderCount > 0 ? (
+                    <View style={styles.countBadge}>
+                      <Text style={styles.countBadgeText}>{pendingOrderCount}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
-            ) : binder?.owner ? (
-              <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { username: binder.owner.username })}>
-                <Text style={styles.ownerLine}>de @{binder.owner.username}</Text>
-              </TouchableOpacity>
-            ) : null}
+            ) : (
+              <View>
+                {binder?.owner ? (
+                  <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { username: binder.owner.username })}>
+                    <Text style={styles.ownerLine}>de @{binder.owner.username}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {cards.length > 0 ? (
+                  <View style={styles.actionsRow}>
+                    <Button
+                      title={selectionMode ? 'Cancelar' : 'Seleccionar'}
+                      icon={selectionMode ? 'close-outline' : 'checkbox-outline'}
+                      variant="secondary"
+                      compact
+                      onPress={selectionMode ? exitSelectionMode : () => setSelectionMode(true)}
+                      style={styles.actionButton}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            )}
           </View>
 
           <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
@@ -490,7 +538,7 @@ export default function BinderDetailScreen({ route, navigation }) {
         />
       )}
 
-      {selectionMode ? (
+      {selectionMode && isOwner ? (
         <View style={styles.bulkBar}>
           <Text style={styles.bulkCount}>{selectedCards.length} seleccionada(s)</Text>
           <View style={styles.bulkActions}>
@@ -512,6 +560,20 @@ export default function BinderDetailScreen({ route, navigation }) {
               textColor={colors.danger}
               onPress={handleBulkDelete}
               loading={bulkWorking}
+              disabled={selectedCards.length === 0}
+              style={styles.bulkButton}
+            />
+          </View>
+        </View>
+      ) : selectionMode ? (
+        <View style={styles.bulkBar}>
+          <Text style={styles.bulkCount}>{selectedCards.length} seleccionada(s)</Text>
+          <View style={styles.bulkActions}>
+            <Button
+              title={`Crear pedido (${selectedCards.length})`}
+              icon="cart-outline"
+              compact
+              onPress={() => setOrderModalOpen(true)}
               disabled={selectedCards.length === 0}
               style={styles.bulkButton}
             />
@@ -548,6 +610,27 @@ export default function BinderDetailScreen({ route, navigation }) {
         onConfirm={handleConfirmBulkSell}
         cards={selectedCards}
         currency={currency}
+      />
+
+      <CreateOrderModal
+        visible={orderModalOpen}
+        onClose={() => setOrderModalOpen(false)}
+        onSuccess={() => {
+          setOrderModalOpen(false);
+          exitSelectionMode();
+        }}
+        binder={binder}
+        cards={selectedCards}
+        currency={currency}
+      />
+
+      <PendingOrdersModal
+        visible={pendingOrdersModalOpen}
+        onClose={() => setPendingOrdersModalOpen(false)}
+        binderId={binderId}
+        currency={currency}
+        onCountChange={setPendingOrderCount}
+        onAccepted={load}
       />
     </View>
   );
@@ -599,6 +682,29 @@ function getStyles(colors) {
   },
   actionButton: {
     flex: 1,
+  },
+  pedidosWrap: {
+    flex: 1,
+    position: 'relative',
+  },
+  countBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: colors.background,
+  },
+  countBadgeText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: '#fff',
   },
   ownerLine: {
     color: colors.primary,

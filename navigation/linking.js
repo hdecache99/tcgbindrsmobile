@@ -9,16 +9,8 @@ export const linking = {
   prefixes: ['tcgbindrsmobile://'],
   config: {
     screens: {
-      Binders: {
-        screens: {
-          BinderDetail: 'b/:binderId',
-        },
-      },
-      Feed: {
-        screens: {
-          UserProfile: 'u/:username',
-        },
-      },
+      BinderDetail: 'b/:binderId',
+      UserProfile: 'u/:username',
     },
   },
 };

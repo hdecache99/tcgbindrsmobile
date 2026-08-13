@@ -10,7 +10,7 @@ import { useTheme } from '../lib/ThemeContext';
 // Se muestra una sola vez, justo después de un primer login por Google/Facebook
 // (RootNavigator la renderiza directo cuando detecta `profiles.username` con
 // prefijo "tmp_" — ver handle_new_user() en Supabase). Sin `navigation` prop
-// porque no vive dentro de un Stack: usa `onDone` para volver a AppTabs.
+// porque no vive dentro de un Stack: usa `onDone` para volver a AppStack.
 export default function SetUsernameScreen({ onDone }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
