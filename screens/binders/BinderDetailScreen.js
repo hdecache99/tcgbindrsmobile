@@ -139,10 +139,10 @@ export default function BinderDetailScreen({ route, navigation }) {
   }, [navigation, selectionMode, reorderMode]);
 
   const isOwner = binder && currentUserId === binder.owner_id;
-  // Fijo en 5: `cards_per_page` tiene un CHECK (IN 4,6,9,12,16) en Supabase
+  // Fijo en 4: `cards_per_page` tiene un CHECK (IN 4,6,9,12,16) en Supabase
   // pensado para las densidades de página del visor de escritorio de la
   // web — no para elegir libremente el ancho del grid en el teléfono.
-  const numColumns = 5;
+  const numColumns = 4;
   const accentColor = binder?.theme_color || colors.primary;
 
   // Conteo inicial para la burbuja del botón "Pedidos" — después de esto, el
